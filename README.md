@@ -14,7 +14,7 @@ Key goals included:
 
 ## AWS Architecture
 
-![System Diagram](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/6a4cf07a-8316-47cb-ad62-93c5b2e3c38a/Untitled.png)
+![Architecture Diagram](./images/architecture.png)
 
 ### Core Flow (Live Tracking):
 1. Driver clicks "Start Location Sharing" → sends current location to API Gateway.
@@ -73,6 +73,8 @@ We used **DynamoDB** to manage open WebSocket connections and track which client
 | Deployment order between Serverless and Terraform | Used shell script to orchestrate CLI-based staged deployment |
 | Mapping Lambda URL into Firehose HTTP destination | Extracted URL via CLI and injected it using `terraform apply -var` |
 | Real-time connection filtering | Used DynamoDB lookups for WebSocket connections and active truck mapping |
+
+![Shell Script Example](./images/shell.png)
 
 ## 📈 Lessons Learned
 
