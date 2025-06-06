@@ -1,38 +1,41 @@
-# Real-Time Cargo Tracking System with Mobile Push Alerts
+# Real-Time Freight Tracking System + Mobile Push Notification Architecture
 
-> Architected and implemented a real-time logistics tracking and mobile notification system for **Sendy**, a leading freight platform in Korea.
+> **Sendy** is Korea's No.1 freight booking service. After a successful reservation, customers should be able to track the driver’s real-time location throughout the delivery process.
 
 ## Project Overview
 
 This project enables customers to track their cargo delivery in real-time after matching with a driver. It supports WebSocket-based live updates and push notifications for delivery status changes.
 
 Key goals included:
-- Real-time delivery location updates via WebSocket.
-- Scalable stream processing architecture using AWS Kinesis.
-- Efficient push alert delivery using Lambda and SNS.
-- Fully serverless design with automated CI/CD.
+- Customers must receive real-time location data for the matched driver after booking.
+- A separate driver-only app should transmit location data in JSON format as a stream.
+- Consider using Kinesis Data Stream and Kinesis Data Firehose for handling the stream.
+- Log location information via Elasticsearch (OpenSearch).
 
-## 📷 System Architecture
+## AWS Architecture
 
 ![System Diagram](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/6a4cf07a-8316-47cb-ad62-93c5b2e3c38a/Untitled.png)
 
 ### Core Flow (Live Tracking):
-1. Driver sends location via API Gateway.
-2. Data is streamed into **Kinesis Data Stream**.
-3. Stream is forwarded to:
-   - **Kinesis Firehose A** → OpenSearch + S3 backup.
-   - **Kinesis Firehose B** → Lambda.
-4. Lambda checks active WebSocket connections via **DynamoDB**.
-5. Sends real-time data to the user using **WebSocket API**.
+1. Driver clicks "Start Location Sharing" → sends current location to API Gateway.
+2. API Gateway forwards location data to Kinesis Data Stream.
+3. Kinesis Data Stream routes the data to:
+   - Firehose A → OpenSearch for log indexing.
+   - Firehose A → S3 for backup storage.
+4. Firehose B sends data to a Lambda function for WebSocket delivery.
+5. Lambda checks if the WebSocket connection for the corresponding truck ID exists using DynamoDB.
+6. If it exists, Lambda sends the data via WebSocket to the user.
+7. Customer receives location updates in real time through WebSocket API.
+8. When the WebSocket opens/closes, the connection ID and truck ID are recorded/deleted in DynamoDB.
 
 ### Push Notification Flow (Status Change):
-1. Driver triggers status update → API Gateway → Lambda.
-2. Lambda publishes message to **SNS**.
-3. SNS triggers:
-   - **SQS A** → Lambda → Mobile/email push.
-   - **SQS B** → Lambda → OpenSearch update for status log.
+9. Driver updates delivery status → API Gateway forwards the event.
+10. Lambda processes the status change and publishes to SNS.
+11. SNS pushes the message to:
+   - SQS A → triggers Lambda to send mobile/email notifications.
+   - SQS B → triggers Lambda to log the status in OpenSearch.
 
-## ⚙️ Technologies Used
+## Technologies Used
 
 - **Backend/Architecture**: AWS Lambda, API Gateway, Kinesis Stream/Firehose, DynamoDB, OpenSearch
 - **Messaging**: SNS, SQS
@@ -42,7 +45,7 @@ Key goals included:
 - **Monitoring/Logging**: CloudWatch, OpenSearch
 - **Languages**: Python, Shell
 
-## 🧠 Architectural Decisions
+## Architectural Decisions
 
 After evaluating multiple options, the final design chose to directly connect **Kinesis Firehose → Lambda → WebSocket API** instead of using OpenSearch as a buffer.
 
@@ -54,7 +57,7 @@ After evaluating multiple options, the final design chose to directly connect **
 
 We used **DynamoDB** to manage open WebSocket connections and track which clients are listening to which truck IDs in real time.
 
-## 🔄 CI/CD Strategy
+## CI/CD Strategy
 
 - Used **GitHub Actions** for deployment automation.
 - **Lambda functions** managed with Serverless Framework.
@@ -80,23 +83,10 @@ As a DevOps-focused engineer, I realized that **architecture decisions drive suc
 - Direct WebSocket push beats polling for instant feedback.
 - CI/CD across multiple IaC tools (Terraform + Serverless) must consider dependency order.
 
-## 🛠️ Deployment (Coming Soon)
-
-Terraform/Serverless code will be added with examples for:
-
-- `driver-location-lambda`
-- `firehose-to-websocket-pipeline`
-- `sns-sqs-status-push`
-- `DynamoDB connection tracking`
-
-## 🔗 Related Tech/Concepts
-
-- Kafka (evaluated for streaming)
-- Kubernetes (explored for future scalability)
-- CI/CD automation (GitHub Actions + AWS CLI)
-- Monitoring: OpenSearch, CloudWatch
-- Real-time systems: WebSocket, Pub/Sub, Serverless Patterns
-
+## Related Technologies & Concepts
+- Kafka – Evaluated for large-scale stream processing
+- Kubernetes – Explored as a future option for container orchestration and scaling
+- Jenkins – Considered for legacy CI workflows
 ---
 
 
