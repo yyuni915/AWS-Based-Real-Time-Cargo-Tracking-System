@@ -16,24 +16,32 @@ Key goals included:
 
 ![Architecture Diagram](./images/architecture.png)
 
-### Core Flow (Live Tracking):
+### Detailed Architecture Flow (Live Tracking):
 1. Driver clicks "Start Location Sharing" → sends current location to API Gateway.
 2. API Gateway forwards location data to Kinesis Data Stream.
-3. Kinesis Data Stream routes the data to:
-   - Firehose A → OpenSearch for log indexing.
-   - Firehose A → S3 for backup storage.
-4. Firehose B sends data to a Lambda function for WebSocket delivery.
-5. Lambda checks if the WebSocket connection for the corresponding truck ID exists using DynamoDB.
-6. If it exists, Lambda sends the data via WebSocket to the user.
-7. Customer receives location updates in real time through WebSocket API.
-8. When the WebSocket opens/closes, the connection ID and truck ID are recorded/deleted in DynamoDB.
+3. Kinesis Data Stream forwards the data to Firehose A (connected to OpenSearch).
+4. Firehose A stores backup logs in S3.
+5. Firehose A also sends logs to OpenSearch for indexing.
+6. At the same time, Kinesis Data Stream sends the same data to Firehose B (connected to Lambda).
+7. Firehose B triggers a Lambda function for real-time data handling.
+8. Lambda queries DynamoDB to check if a WebSocket connection exists for the given truck ID.
+9. If a connection exists, Lambda sends the location data to the user via WebSocket API.
+10. The customer views real-time truck location updates through the WebSocket.
+11. When a user starts or stops tracking, the WebSocket is opened or closed accordingly.
+12. When a WebSocket connection opens, the system stores the connection ID and truck ID in DynamoDB. When it closes, the entry is deleted.
 
 ### Push Notification Flow (Status Change):
-9. Driver updates delivery status → API Gateway forwards the event.
-10. Lambda processes the status change and publishes to SNS.
-11. SNS pushes the message to:
-   - SQS A → triggers Lambda to send mobile/email notifications.
-   - SQS B → triggers Lambda to log the status in OpenSearch.
+
+13. Driver presses a button to change delivery status → sends data to API Gateway.
+14. API Gateway invokes a Lambda to process the status update.
+15. Lambda publishes a message to SNS.
+16. SNS pushes the message to:
+    - SQS A → triggers Lambda A to send mobile/email push notifications.
+17. Lambda A publishes a message to SNS for downstream delivery.
+18. SNS sends out the notification to the user (currently via email).
+19. SNS also pushes the message to SQS B → triggers Lambda B.
+20. Lambda B updates the delivery status in the OpenSearch index.
+21. The status log is now available for search and monitoring in OpenSearch.
 
 ## Technologies Used
 
